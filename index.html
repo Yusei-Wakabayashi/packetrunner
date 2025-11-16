@@ -3,23 +3,26 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>Packet Runner - 縦向きプロトタイプ</title>
+<title>Packet Runner - Fixed</title>
 <style>
   :root{
-    --bg:#020617;
-    --ground:#111827;
-    --player:#60a5fa;
-    --obstacle:#ef4444;
+    --bg:#020617;        /* 画面外背景（ボディ） */
+    --ground:#064e3b;    /* 地面のベースカラー（濃いグリーン） */
+    --ground-top:#22c55e;/* 地面の上端ライン */
+    --player:#e0f2fe;    /* プレイヤーは少し明るくして見やすく */
+    --obstacle:#f97373;  /* 障害物も少し柔らかい赤に */
     --hud:#e5e7eb;
   }
+
   html,body{
     margin:0;
     padding:0;
     height:100%;
-    background:var(--bg);
+    background:#020617; /* キャンバス外側は真っ暗 */
     font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;
     color:var(--hud);
   }
+
   body{
     display:flex;
     justify-content:center;
@@ -49,16 +52,42 @@
     font-size:13px;
     color:#94a3b8;
   }
-  .mode-toggle{
+  .game-container{
+    position:relative;
+    flex:1;
     display:flex;
-    gap:8px;
-    margin-top:4px;
-    font-size:13px;
-    flex-wrap:wrap;
   }
   canvas{
     flex:1;
-    background:radial-gradient(circle at 50% 0%,#1f2937,#020617);
+    /* === 背景：データセンター風グラデーション＋縦ライン === */
+    background:
+      /* 縦ラインのグリッド（うっすら） */
+      linear-gradient(90deg,
+        rgba(148,163,184,0.15) 1px,
+        transparent 1px
+      ),
+      /* 斜めの光筋 */
+      linear-gradient(135deg,
+        rgba(56,189,248,0.25),
+        transparent 55%
+      ),
+      /* 下側の光り方 */
+      radial-gradient(circle at 50% 100%,
+        rgba(34,211,238,0.4),
+        transparent 60%
+      ),
+      /* 全体の縦グラデーション */
+      linear-gradient(to bottom,
+        #020617 0%,
+        #0f172a 40%,
+        #020617 75%,
+        #020617 100%
+      );
+    background-size:
+      40px 100%,   /* 縦ラインの間隔 */
+      100% 100%,
+      100% 100%,
+      100% 100%;
     border-radius:12px;
     touch-action:none;
   }
@@ -93,39 +122,101 @@
     text-align:center;
   }
 
-  /* オーバーレイ（GameOver/Goal） */
+  /* タイトル＆ゲームオーバーオーバーレイ */
+  .title-overlay,
   .overlay{
     position:absolute;
     inset:0;
-    display:none;
+    display:flex;
     justify-content:center;
     align-items:center;
     pointer-events:none;
   }
+  .title-overlay.visible,
   .overlay.visible{
-    display:flex;
     pointer-events:auto;
   }
+  .title-card,
   .overlay-inner{
-    background:rgba(15,23,42,0.9);
-    border-radius:16px;
+    background:rgba(15,23,42,0.96);
+    border-radius:18px;
     padding:20px;
-    width:80%;
-    max-width:320px;
-    text-align:center;
+    width:86%;
+    max-width:360px;
     box-shadow:0 20px 30px rgba(0,0,0,0.5);
-    border:1px solid rgba(148,163,184,0.4);
+    border:1px solid rgba(148,163,184,0.5);
+  }
+  .title-overlay{
+    display:none;
+  }
+  .title-overlay.visible{
+    display:flex;
+  }
+  .game-title{
+    font-size:24px;
+    font-weight:800;
+    margin-bottom:4px;
+  }
+  .game-caption{
+    font-size:12px;
+    color:#cbd5f5;
+    margin-bottom:12px;
+  }
+  .select-group{
+    margin-bottom:12px;
+  }
+  .select-label{
+    font-size:12px;
+    color:#9ca3af;
+    margin-bottom:4px;
+  }
+  .select-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .pill{
+    border-radius:999px;
+    border:1px solid #4b5563;
+    padding:4px 10px;
+    font-size:12px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+  .pill input{
+    accent-color:#60a5fa;
+  }
+  .title-buttons{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-top:8px;
+  }
+  .title-note{
+    font-size:11px;
+    color:#64748b;
+    margin-top:6px;
+  }
+  .overlay{
+    display:none;
+  }
+  .overlay.visible{
+    display:flex;
   }
   .overlay-title{
     font-size:24px;
     font-weight:800;
     margin-bottom:8px;
+    text-align:center;
   }
   .overlay-msg{
     font-size:13px;
     color:#cbd5f5;
     margin-bottom:16px;
     white-space:pre-line;
+    text-align:center;
   }
   .overlay-buttons{
     display:flex;
@@ -135,19 +226,13 @@
   .overlay-buttons button{
     width:100%;
   }
-  .mode-pill{
+  .mode-chip,
+  .difficulty-chip{
     padding:2px 8px;
     border-radius:999px;
     border:1px solid #4b5563;
     font-size:11px;
   }
-
-  .game-container{
-    position:relative;
-    flex:1;
-    display:flex;
-  }
-
   @media (orientation:landscape){
     .subtitle::after{
       content:"（スマホ縦向き推奨）";
@@ -162,15 +247,63 @@
   <div class="header">
     <div class="title">Packet Runner</div>
     <div class="subtitle">タップ（クリック / Space / ↑）でジャンプして障害を回避しよう。</div>
-    <div class="mode-toggle">
-      <span class="mode-pill">Mode: <span id="modeLabel">TA</span></span>
-      <label><input type="radio" name="mode" value="ta" checked> TA（タイムアタック）</label>
-      <label><input type="radio" name="mode" value="life"> Life（ライフ制）</label>
-    </div>
   </div>
 
   <div class="game-container">
     <canvas id="game"></canvas>
+
+    <!-- タイトル -->
+    <div id="titleOverlay" class="title-overlay visible">
+      <div class="title-card">
+        <div class="game-title">Packet Runner</div>
+        <div class="game-caption">
+          パケットがネットワークの障害を乗り越えながらゴールを目指すランゲーム。
+        </div>
+
+        <div class="select-group">
+          <div class="select-label">ゲームモード</div>
+          <div class="select-row">
+            <label class="pill">
+              <input type="radio" name="mode" value="ta" checked>
+              <span>TA（タイムアタック）</span>
+            </label>
+            <label class="pill">
+              <input type="radio" name="mode" value="life">
+              <span>Life（ライフ制）</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="select-group">
+          <div class="select-label">難易度</div>
+          <div class="select-row">
+            <label class="pill">
+              <input type="radio" name="difficulty" value="normal" checked>
+              <span>Normal</span>
+            </label>
+            <label class="pill">
+              <input type="radio" name="difficulty" value="hard">
+              <span>Hard</span>
+            </label>
+            <label class="pill">
+              <input type="radio" name="difficulty" value="veryhard">
+              <span>Very Hard</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="title-buttons">
+          <button id="titleStartBtn" class="big">START</button>
+        </div>
+        <div class="title-note">
+          ・TA: ゴールまでのタイムを記録<br>
+          ・Life: ライフが0になる前にゴールを目指そう<br>
+          ・難易度で障害物の高さ・数が変化します。
+        </div>
+      </div>
+    </div>
+
+    <!-- GameOver / Goal -->
     <div id="overlay" class="overlay">
       <div class="overlay-inner">
         <div id="overlayTitle" class="overlay-title">GAME OVER</div>
@@ -185,89 +318,35 @@
 
   <div class="hud-bar">
     <div class="hud-group">
+      <span class="mode-chip">Mode: <span id="modeLabel">TA</span></span>
+      <span class="difficulty-chip">Difficulty: <span id="difficultyLabel">Normal</span></span>
+    </div>
+    <div class="hud-group">
       <span id="timeLabel">Time: 0.00s</span>
       <span id="livesLabel" style="display:none">Lives: 3</span>
       <span id="bestLabel">Best: —</span>
     </div>
-    <div class="hud-group">
-      <button id="startBtn" class="big">START</button>
-      <button id="restartBtn">Restart</button>
-    </div>
   </div>
 
   <div class="footer">
-    ※画像は後で差し替え可能。今はプレイヤー・障害物とも色ブロックのみ。
+    ※画像は後で差し替え可能。今はプレイヤー・障害物とも色ブロックのみです。
   </div>
 </div>
 
 <script>
-/* ===== 基本設定（縦画面用） ===== */
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-
-function resizeCanvas(){
-  const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-}
-function initCanvasSize(){
-  // app の高さに合わせて、キャンバスはほぼ正方形〜縦長にする
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const size = Math.min(rect.width, rect.height);
-  canvas.style.width = rect.width + "px";
-  canvas.style.height = rect.height + "px"; // 縦いっぱい
-  resizeCanvas();
-}
-window.addEventListener('resize', initCanvasSize);
-initCanvasSize();
-
-/* ===== UI参照 ===== */
-const startBtn = document.getElementById('startBtn');
-const restartBtn = document.getElementById('restartBtn');
-const retryBtn = document.getElementById('retryBtn');
-const backTitleBtn = document.getElementById('backTitleBtn');
-const overlay = document.getElementById('overlay');
-const overlayTitle = document.getElementById('overlayTitle');
-const overlayMsg = document.getElementById('overlayMsg');
-
-const modeLabel = document.getElementById('modeLabel');
-const timeLabel = document.getElementById('timeLabel');
-const livesLabel = document.getElementById('livesLabel');
-const bestLabel = document.getElementById('bestLabel');
-
-let mode = 'ta';
-document.querySelectorAll('input[name="mode"]').forEach(r=>{
-  r.addEventListener('change', e=>{
-    mode = e.target.value;
-    modeLabel.textContent = mode === 'ta' ? 'TA' : 'Life';
-    updateHudVisibility();
-  });
-});
-
-function updateHudVisibility(){
-  if(mode === 'ta'){
-    livesLabel.style.display = 'none';
-    bestLabel.style.display = '';
-  }else{
-    livesLabel.style.display = '';
-    bestLabel.style.display = 'none';
-  }
-}
-updateHudVisibility();
-
-/* ===== ゲームロジック（縦用に調整） ===== */
+/* ゲーム定数 */
 const GAME = {
-  width: 360, // 仮想幅
-  height: 640, // 仮想高さ（縦長）
+  width: 360,
+  height: 640,
+  groundRatio: 0.8,
   groundY: 520,
   gravity: 1300,
   jumpImpulse: -480,
   scrollSpeed: 240,
   playerX: 80
 };
-
 const player = {
   x: GAME.playerX,
   y: 0,
@@ -277,97 +356,176 @@ const player = {
   onGround: false,
   color: getComputedStyle(document.documentElement).getPropertyValue('--player').trim()
 };
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function initCanvasSize(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.style.width  = rect.width + "px";
+  canvas.style.height = rect.height + "px";
+  resizeCanvas();
+  const h = rect.height;
+  GAME.groundY = h * GAME.groundRatio;
+  player.y = GAME.groundY - player.h;
+}
+window.addEventListener('resize', initCanvasSize);
+initCanvasSize();
 
+/* UI */
+const titleOverlay = document.getElementById('titleOverlay');
+const titleStartBtn = document.getElementById('titleStartBtn');
+const overlay = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlayTitle');
+const overlayMsg = document.getElementById('overlayMsg');
+const retryBtn = document.getElementById('retryBtn');
+const backTitleBtn = document.getElementById('backTitleBtn');
+const modeLabel = document.getElementById('modeLabel');
+const difficultyLabel = document.getElementById('difficultyLabel');
+const timeLabel = document.getElementById('timeLabel');
+const livesLabel = document.getElementById('livesLabel');
+const bestLabel = document.getElementById('bestLabel');
+
+/* モード・難易度 */
+let mode = 'ta';
+let difficulty = 'normal';
+document.querySelectorAll('input[name="mode"]').forEach(r=>{
+  r.addEventListener('change', e=>{
+    mode = e.target.value;
+    modeLabel.textContent = mode === 'ta' ? 'TA' : 'Life';
+    updateHudVisibility();
+  });
+});
+document.querySelectorAll('input[name="difficulty"]').forEach(r=>{
+  r.addEventListener('change', e=>{
+    difficulty = e.target.value;
+    difficultyLabel.textContent = diffLabel(difficulty);
+  });
+});
+function diffLabel(d){
+  if(d === 'normal') return 'Normal';
+  if(d === 'hard') return 'Hard';
+  return 'Very Hard';
+}
+function updateHudVisibility(){
+  if(mode === 'ta'){
+    livesLabel.style.display = 'none';
+    bestLabel.style.display = '';
+  } else {
+    livesLabel.style.display = '';
+    bestLabel.style.display = 'none';
+  }
+}
+updateHudVisibility();
+
+/* 状態 */
 let running = false;
-let inTitle = true;
 let lastTime = 0;
-let elapsed = 0;
 let elapsedSinceStart = 0;
 let mapOffset = 0;
 let mapData = null;
 let lives = 3;
+let fallStartY = null;
 
-let bestTimeKey = 'packet-runner-best-time-vertical';
-let taBest = localStorage.getItem(bestTimeKey) ? parseFloat(localStorage.getItem(bestTimeKey)) : null;
-bestLabel.textContent = taBest ? 'Best: ' + taBest.toFixed(2) + 's' : 'Best: —';
+let bestTimeKeyBase = 'packet-runner-best-time-vertical-';
+function bestKeyForDifficulty(){ return bestTimeKeyBase + difficulty; }
+let taBest = null;
 
-function generateMap(totalLength = 2800){
+let invulnerableTimer = 0;
+let flashT = 0;
+
+/* 難易度パラメータ */
+const DIFFICULTY_CONFIG = {
+  normal: {
+    blockChance: 0.22,
+    blockMinH: 24,
+    blockMaxH: 55,
+    gapChance: 0.18,
+    gapMin: 60,
+    gapMax: 160,
+    baseLength: 2600,
+  },
+  hard: {
+    blockChance: 0.30,
+    blockMinH: 30,
+    blockMaxH: 80,
+    gapChance: 0.22,
+    gapMin: 70,
+    gapMax: 180,
+    baseLength: 3100,
+  },
+  veryhard: {
+    blockChance: 0.40,
+    blockMinH: 40,
+    blockMaxH: 110,
+    gapChance: 0.26,
+    gapMin: 80,
+    gapMax: 200,
+    baseLength: 3600,
+  }
+};
+function getCurrentDiffConfig(){
+  return DIFFICULTY_CONFIG[difficulty] || DIFFICULTY_CONFIG.normal;
+}
+
+/* マップ生成（物理的に飛べるギャップだけ） */
+function generateMap(){
+  const cfg = getCurrentDiffConfig();
+  const totalLength = cfg.baseLength + Math.floor(Math.random()*800);
   const segs = [];
   let x = 0;
   const minRun = 140;
+  const MAX_GAP_WIDTH = 200; // これ以上は絶対出さない
+
   while(x < totalLength){
     const r = Math.random();
-    if(r < 0.2 && x > 200){
-      const gapW = randInt(70, 200);
+
+    if(r < cfg.gapChance && x > 200){
+      const gapMin = Math.min(cfg.gapMin, MAX_GAP_WIDTH * 0.6);
+      const gapMax = Math.min(cfg.gapMax, MAX_GAP_WIDTH);
+      const gapW = randInt(gapMin, gapMax);
+
       segs.push({type:'gap', x, width:gapW});
       x += gapW;
-      const run = randInt(100, 180);
+
+      // 着地用の足場
+      const safeRunMin = 140;
+      const safeRunMax = 220;
+      const run = randInt(safeRunMin, safeRunMax);
       segs.push({type:'ground', x, width:run});
       x += run;
+
     } else {
       const run = randInt(minRun, minRun+220);
-      segs.push({type:'ground', x, width:run});
-      if(Math.random() < 0.3 && x > 180){
-        const blockW = randInt(26,50);
-        const blockH = randInt(30,80);
-        segs.push({type:'block', x:x+randInt(40,Math.max(60,run-20)), width:blockW, height:blockH});
-      }
+      const groundStart = x;
+      segs.push({type:'ground', x:groundStart, width:run});
       x += run;
+
+      const canPlaceBlock = run > 120;
+      if(canPlaceBlock && Math.random() < cfg.blockChance && groundStart > 180){
+        const blockW = randInt(26,50);
+        const blockH = randInt(cfg.blockMinH, cfg.blockMaxH);
+        const margin = 40;
+        const maxOffset = Math.max(margin+blockW, run - margin - blockW);
+        const offset = randInt(margin, maxOffset);
+        segs.push({
+          type:'block',
+          x: groundStart + offset,
+          width:blockW,
+          height:blockH
+        });
+      }
     }
   }
   segs.push({type:'goal', x: totalLength+40, width: 40});
   return {totalLength, segments:segs};
 }
 function randInt(a,b){ return Math.floor(a + Math.random()*(b-a+1)); }
-function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
-  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
-}
 
-function resetGame(){
-  running = false;
-  lastTime = 0;
-  elapsed = 0;
-  elapsedSinceStart = 0;
-  mapOffset = 0;
-  player.y = GAME.groundY - player.h;
-  player.vy = 0;
-  player.onGround = true;
-  lives = 3;
-  timeLabel.textContent = 'Time: 0.00s';
-  livesLabel.textContent = 'Lives: ' + lives;
-  mapData = generateMap(3200 + Math.floor(Math.random()*1200));
-  hideOverlay();
-}
-
-function startGame(){
-  inTitle = false;
-  resetGame();
-  running = true;
-  lastTime = performance.now();
-  taBest = localStorage.getItem(bestTimeKey) ? parseFloat(localStorage.getItem(bestTimeKey)) : null;
-  bestLabel.textContent = taBest ? 'Best: ' + taBest.toFixed(2) + 's' : 'Best: —';
-  requestAnimationFrame(loop);
-}
-
-function backToTitle(){
-  running = false;
-  inTitle = true;
-  resetGame();
-}
-
-startBtn.addEventListener('click', startGame);
-restartBtn.addEventListener('click', ()=>{
-  resetGame();
-  startGame();
-});
-retryBtn.addEventListener('click', ()=>{
-  startGame();
-});
-backTitleBtn.addEventListener('click', ()=>{
-  backToTitle();
-});
-
-/* ジャンプ入力 */
+/* 入力 */
 function doJump(){
   if(!running) return;
   if(player.onGround){
@@ -377,29 +535,66 @@ function doJump(){
 }
 window.addEventListener('keydown', e=>{
   if(e.code === 'Space' || e.code === 'ArrowUp'){ e.preventDefault(); doJump(); }
-  if(e.key === 'r'){ resetGame(); startGame(); }
 });
 canvas.addEventListener('mousedown', ()=>{ doJump(); });
 canvas.addEventListener('touchstart', e=>{ e.preventDefault(); doJump(); }, {passive:false});
 
-/* メインループ */
-let invulnerableTimer = 0;
-let flashT = 0;
+/* スタート・リセット */
+titleStartBtn.addEventListener('click', ()=>{
+  modeLabel.textContent = mode === 'ta' ? 'TA' : 'Life';
+  difficultyLabel.textContent = diffLabel(difficulty);
+  startGame();
+});
+retryBtn.addEventListener('click', ()=>{ startGame(); });
+backTitleBtn.addEventListener('click', ()=>{ backToTitle(); });
 
+function startGame(){
+  titleOverlay.classList.remove('visible');
+  hideOverlay();
+  resetGame();
+  running = true;
+  lastTime = performance.now();
+  const key = bestKeyForDifficulty();
+  taBest = localStorage.getItem(key) ? parseFloat(localStorage.getItem(key)) : null;
+  bestLabel.textContent = taBest ? 'Best: ' + taBest.toFixed(2) + 's' : 'Best: —';
+  requestAnimationFrame(loop);
+}
+function backToTitle(){
+  running = false;
+  titleOverlay.classList.add('visible');
+  hideOverlay();
+  resetGame();
+}
+function resetGame(){
+  running = false;
+  lastTime = 0;
+  elapsedSinceStart = 0;
+  mapOffset = 0;
+  mapData = generateMap();
+  lives = 3;
+  fallStartY = null;
+  player.y = GAME.groundY - player.h;
+  player.vy = 0;
+  player.onGround = true;
+  timeLabel.textContent = 'Time: 0.00s';
+  livesLabel.textContent = 'Lives: ' + lives;
+}
+
+/* ループ */
 function loop(ts){
-  if(!running) { render(); return; }
+  if(!running){
+    render();
+    return;
+  }
   const dt = Math.min(0.05, (ts - lastTime)/1000);
   lastTime = ts;
   update(dt);
   render();
   requestAnimationFrame(loop);
 }
-
 function update(dt){
-  elapsed += dt;
   elapsedSinceStart += dt;
 
-  // 重力・移動
   player.vy += GAME.gravity * dt;
   player.y += player.vy * dt;
 
@@ -411,9 +606,19 @@ function update(dt){
       player.y = GAME.groundY - player.h;
       player.vy = 0;
       player.onGround = true;
+      fallStartY = null;
     }
-  }else{
+  } else {
+    if(player.onGround){
+      fallStartY = player.y;
+    }
     player.onGround = false;
+  }
+
+  // 隙間に一定距離落ちたらゲームオーバー
+  if(fallStartY !== null && player.y - fallStartY > 80){
+    handleHit(true);
+    return;
   }
 
   mapOffset += GAME.scrollSpeed * dt;
@@ -427,13 +632,14 @@ function update(dt){
     const by = GAME.groundY - b.height;
     if(rectsOverlap(player.x, player.y, player.w, player.h, bx, by, b.width, b.height)){
       handleHit();
-      break;
+      return;
     }
   }
 
   const canvasHeight = canvas.clientHeight;
   if(player.y > canvasHeight + 40){
     handleHit(true);
+    return;
   }
 
   const goalSeg = mapData.segments.find(s=>s.type==='goal');
@@ -441,13 +647,13 @@ function update(dt){
     const gx = goalSeg.x - mapOffset;
     if(gx + goalSeg.width < player.x + player.w){
       handleVictory();
+      return;
     }
   }
 
   if(invulnerableTimer > 0) invulnerableTimer = Math.max(0, invulnerableTimer - dt);
   if(flashT > 0) flashT = Math.max(0, flashT - dt);
 }
-
 function isGroundAt(worldX){
   for(const s of mapData.segments){
     if(s.type === 'gap'){
@@ -456,22 +662,26 @@ function isGroundAt(worldX){
   }
   return true;
 }
+function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
 
+/* ヒット・勝利 */
 function handleHit(){
   if(invulnerableTimer > 0) return;
   invulnerableTimer = 0.8;
-  flashT = 0.2;
+  flashT = 0.25;
 
   if(mode === 'ta'){
     running = false;
     showOverlay("GAME OVER","障害にぶつかってしまった…\nTAは失敗です。\nもう一度挑戦しますか？");
-  }else{
+  } else {
     lives -= 1;
     livesLabel.textContent = 'Lives: ' + lives;
     if(lives <= 0){
       running = false;
       showOverlay("GAME OVER","ライフがなくなってしまった…\nもう一度挑戦しますか？");
-    }else{
+    } else {
       player.y = GAME.groundY - player.h;
       player.vy = 0;
       player.onGround = true;
@@ -479,28 +689,28 @@ function handleHit(){
     }
   }
 }
-
 function handleVictory(){
   running = false;
   if(mode === 'ta'){
     const t = elapsedSinceStart;
-    const prev = localStorage.getItem(bestTimeKey) ? parseFloat(localStorage.getItem(bestTimeKey)) : null;
+    const key = bestKeyForDifficulty();
+    const prev = localStorage.getItem(key) ? parseFloat(localStorage.getItem(key)) : null;
     let msg;
     if(prev === null || t < prev){
-      localStorage.setItem(bestTimeKey, String(t));
+      localStorage.setItem(key, String(t));
       taBest = t;
       bestLabel.textContent = 'Best: ' + taBest.toFixed(2) + 's';
       msg = `GOAL！\nNew Best: ${t.toFixed(2)}s`;
-    }else{
+    } else {
       msg = `GOAL！\nTime: ${t.toFixed(2)}s`;
     }
     showOverlay("GOAL", msg + "\nもう一度挑戦しますか？");
-  }else{
+  } else {
     showOverlay("GOAL","ゴールに到達しました！\nもう一度挑戦しますか？");
   }
 }
 
-/* オーバーレイ表示 */
+/* オーバーレイ */
 function showOverlay(title, msg){
   overlayTitle.textContent = title;
   overlayMsg.textContent = msg;
@@ -516,28 +726,28 @@ function render(){
   const h = canvas.clientHeight;
   ctx.clearRect(0,0,w,h);
 
-  // 背景
   ctx.fillStyle = "#020617";
   ctx.fillRect(0,0,w,h);
 
-  // 地面
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ground').trim();
+  ctx.strokeStyle = getComputedStyle(document.documentElement)
+    .getPropertyValue('--ground-top')
+    .trim();
   ctx.fillRect(0,GAME.groundY,w,h-GAME.groundY);
 
-  // セグメント描画
   for(const s of mapData.segments){
     const x = s.x - mapOffset;
     if(x + s.width < -100 || x > w+100) continue;
     if(s.type === 'gap'){
       ctx.fillStyle = "#020617";
-      ctx.fillRect(x,GAME.groundY,s.width, h-GAME.groundY);
-    }else if(s.type === 'block'){
+      ctx.fillRect(x,GAME.groundY,s.width,h-GAME.groundY);
+    } else if(s.type === 'block'){
       const by = GAME.groundY - s.height;
       ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--obstacle').trim();
       ctx.fillRect(x,by,s.width,s.height);
       ctx.fillStyle = "rgba(0,0,0,0.2)";
       ctx.fillRect(x,by,s.width,s.height*0.2);
-    }else if(s.type === 'goal'){
+    } else if(s.type === 'goal'){
       const gx = x;
       const gy = GAME.groundY - 100;
       ctx.fillStyle = "#facc15";
@@ -552,7 +762,6 @@ function render(){
     }
   }
 
-  // プレイヤー
   ctx.save();
   if(invulnerableTimer > 0){
     if(Math.floor(performance.now()/80)%2===0) ctx.globalAlpha = 0.4;
@@ -561,13 +770,12 @@ function render(){
   roundRect(ctx, player.x, player.y, player.w, player.h, 8, true, false);
   ctx.restore();
 
-  // 画面内 HUD（簡易）
   ctx.fillStyle = "#e5e7eb";
   ctx.font = "13px system-ui";
   ctx.fillText("Time: " + elapsedSinceStart.toFixed(2) + "s", 8, 18);
   if(mode === 'life'){
     ctx.fillText("Lives: " + lives, 8, 36);
-  }else if(taBest){
+  } else if(taBest){
     ctx.fillText("Best: " + taBest.toFixed(2) + "s", 8, 36);
   }
 
@@ -576,31 +784,29 @@ function render(){
     ctx.fillRect(0,0,w,h);
   }
 }
-
-function roundRect(ctx, x, y, w, h, r, fill, stroke){
-  if(typeof r === 'number') r = {tl:r,tr:r,br:r,bl:r};
+function roundRect(ctx,x,y,w,h,r,fill,stroke){
+  if(typeof r === 'number') r={tl:r,tr:r,br:r,bl:r};
   ctx.beginPath();
-  ctx.moveTo(x + r.tl, y);
-  ctx.lineTo(x + w - r.tr, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r.tr);
-  ctx.lineTo(x + w, y + h - r.br);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
-  ctx.lineTo(x + r.bl, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r.bl);
-  ctx.lineTo(x, y + r.tl);
-  ctx.quadraticCurveTo(x, y, x + r.tl, y);
+  ctx.moveTo(x+r.tl,y);
+  ctx.lineTo(x+w-r.tr,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r.tr);
+  ctx.lineTo(x+w,y+h-r.br);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h);
+  ctx.lineTo(x+r.bl,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r.bl);
+  ctx.lineTo(x,y+r.tl);
+  ctx.quadraticCurveTo(x,y,x+r.tl,y);
   ctx.closePath();
   if(fill) ctx.fill();
   if(stroke) ctx.stroke();
 }
 
-/* 初期化 */
-mapData = generateMap(3200);
+/* 初期 */
+mapData = generateMap();
 player.y = GAME.groundY - player.h;
 player.onGround = true;
 render();
-
-console.log("Packet Runner vertical prototype loaded.");
+console.log("Packet Runner fixed build loaded.");
 </script>
 </body>
 </html>
